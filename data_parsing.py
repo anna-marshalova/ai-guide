@@ -111,70 +111,16 @@ class WikiParser:
         return True
 
     def validate_content(self, content):
-        if content.get("class") in ["vcard"]:
-            return True
-        if content.name not in ["p", "ul", "ol"]:
+        if content.name not in ["p", "ul", "ol", "section", "div"]:
+            return False
+        if content.name == "div" and ("vcard" not in content.get("class")):
             return False
         if content.get("class") in ["reference"]:
             return False
         return True
 
-    # def parse_page_wikipedia(self, name, link):
-    #     url = self.get_page_url(name)
-
-    #     try:
-    #         response = requests.get(url)
-    #         soup = BeautifulSoup(response.text, 'html.parser')
-
-    #         # Initialize city data dictionary
-    #         page_info = {}
-    #         section_divs = soup.find_all('div', class_='mw-heading2')
-    #         if not section_divs:
-    #             snak = soup.find(class_="wikidata-main-snak")
-    #             snak_name = snak.find('a').get_text().strip()
-    #             snak_link = snak.find('a').get('href')
-    #             if snak_name and snak_link:
-    #                 return self.parse_page_wikipedia(snak_name, snak_link)
-    #             else:
-    #                 return {}
-
-    #         for section_div in section_divs:
-    #             section = section_div.find('h2')
-    #             title = section.get('id')
-    #             if self.validate_section_title(section) and title:
-    #                 print(title)
-    #                 section_content = {title: []}
-
-    #                 current = section_div.find_next_sibling()
-    #                 while current and current.name not in ['h2']:
-    #                     if self.validate_content(current):
-    #                         section_content[title].append(current.get_text().strip())
-    #                     if "mw-heading3" in current.get('class', []):
-    #                         current = current.find("h3") or current
-    #                         if current.name == "h3":
-    #                             subtitle = current.get('id')
-    #                             if self.validate_section_title(current) and subtitle:
-    #                                 print(f"\t{subtitle}")
-    #                                 section_content[f"{title}: {subtitle}"] = []
-    #                                 current = current.parent.find_next_sibling()
-    #                                 while current and current.name not in ['h2', 'h3'] and set(current.get('class', []))&{'mw-heading2', 'mw-heading3'} == set():
-    #                                     if self.validate_content(current):
-    #                                         section_content[f"{title}: {subtitle}"].append(current.get_text().strip())
-    #                                     current = current.find_next_sibling()
-    #                             current = current.parent
-
-    #                     current = current.find_next_sibling()
-
-    #                 section_content = {k: ' '.join(v) for k, v in section_content.items()}
-    #                 page_info.update(section_content)
-
-    #         return page_info
-
-    # except Exception as e:
-    #     print(f"Error parsing {name}: {e}")
-    #     return {}
-
-    def parse_page_wikipedia(self, name, link):
+    def parse_page_wikipedia(self, name):
+        """Parse Wikipedia page for a specific city"""
         page = self.wiki_html.page(name)
         page_info = {}
         for section in page.sections:
@@ -192,18 +138,17 @@ class WikiParser:
                     page_info[subtitle].append(current.text)
         return {k: " ".join(v) for k, v in page_info.items() if v}
 
-    def parse_page_wikivoyage(self, name, link):
-        """Parse Wikipedia page for a specific city"""
+    def parse_page_wikivoyage(self, name):
+        """Parse Wikivoyage page for a specific city"""
         # Encode city name for URL
         url = self.get_page_url(name)
 
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=20)
             soup = BeautifulSoup(response.text, "html.parser")
-
             # Initialize city data dictionary
             page_info = {}
-            section_divs = soup.find_all("div", class_="mw-heading2")
+            section_divs = soup.find_all("div", class_="mw-heading mw-heading2")
             if not section_divs:
                 snak = soup.find(class_="wikidata-main-snak")
                 snak_name = snak.find("a").get_text().strip()
@@ -225,40 +170,56 @@ class WikiParser:
                         and set(current.get("class", [])) & {"mw-heading2"} == set()
                     ):
                         if self.validate_content(current):
-                            section_content[title].append(current.get_text().strip())
-                        if current.name == "section":
-                            current = current.find("div")
-                        if "mw-h3section" in current.get("class", []):
-                            current = current.find("div")
-                        if "mw-heading3" in current.get("class", []):
-                            current = current.find("h3")
-                        if current.name in ["h3"]:
-                            subtitle = current.get("id")
-                            if self.validate_section_title(current) and subtitle:
-                                section_content[f"{title}: {subtitle}"] = []
-                                current = current.parent.find_next_sibling()
-                                while (
-                                    current
-                                    and current.name not in ["h2", "h3"]
-                                    and set(current.get("class", []))
-                                    & {"mw-heading2", "mw-heading3"}
-                                    == set()
-                                ):
-                                    if self.validate_content(current):
-                                        section_content[f"{title}: {subtitle}"].append(
-                                            current.get_text().strip()
-                                        )
-                                    if current.find_next_sibling():
-                                        current = current.find_next_sibling()
-                                    else:
-                                        current = current.parent
-                                        if current:
-                                            current = current.parent.parent
-                                        break
+                            if current.name in ["p", "ul", "ol"]:
+                                section_content[title].append(
+                                    current.get_text().strip()
+                                )
+                            if current.name == "div":
+                                section_content[title].append(
+                                    current.get_text().strip()
+                                )
+                            if current.name == "section":
+                                current_div = current.find("div")
+                                if "mw-heading3" in current_div.get("class", []):
+                                    subtitle = current_div.find("h3").get("id")
+                                    if (
+                                        self.validate_section_title(current_div)
+                                        and subtitle
+                                    ):
+                                        section_content[f"{title}: {subtitle}"] = []
+                                        current_div = current_div.find_next_sibling()
+                                        while (
+                                            current_div
+                                            and current_div.name not in ["h2", "h3"]
+                                            and set(current_div.get("class", []))
+                                            & {"mw-heading2", "mw-heading3"}
+                                            == set()
+                                        ):
+                                            if current_div.name in ["p", "ul", "ol"]:
+                                                section_content[
+                                                    f"{title}: {subtitle}"
+                                                ].append(current_div.get_text().strip())
+                                            else:
+                                                current_div_div = current_div.find_all(
+                                                    "div"
+                                                )
+                                                for d in current_div_div:
+                                                    section_content[
+                                                        f"{title}: {subtitle}"
+                                                    ].append(d.get_text().strip())
+                                            if current_div.find_next_sibling():
+                                                current_div = (
+                                                    current_div.find_next_sibling()
+                                                )
+                                            else:
+                                                current_div = current_div.parent
+                                                if current_div:
+                                                    current_div = (
+                                                        current_div.parent.parent
+                                                    )
+                                                break
 
-                        if current:
-                            current = current.find_next_sibling()
-
+                        current = current.find_next_sibling()
                     # Combine content if there's any
                     section_content = {
                         k: " ".join(v) for k, v in section_content.items()
@@ -279,16 +240,23 @@ class WikiParser:
         for name, link in pbar:
             pbar.set_description(name)
             if self.base_url in ["https://ru.wikivoyage.org"]:
-                page_data = self.parse_page_wikivoyage(name, link)
+                page_data = self.parse_page_wikivoyage(name)
             else:
-                page_data = self.parse_page_wikipedia(name, link)
+                page_data = self.parse_page_wikipedia(name)
             if page_data:
                 data[name] = page_data
 
         return data
 
 
-def get_data(big_city_limit=None, russian_city_limit=None, tourism_limit=None):
+def save_to_json(data, filename):
+    """Save collected data to JSON"""
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"Data saved to {filename}")
+
+
+def get_whole_data(big_city_limit=None, russian_city_limit=None, tourism_limit=None):
     wikipedia_parser = WikiParser()
     wikivoyage_parser = WikiParser(base_url="https://ru.wikivoyage.org")
 
@@ -305,46 +273,47 @@ def get_data(big_city_limit=None, russian_city_limit=None, tourism_limit=None):
     russian_cities_data = wikipedia_parser.scrape_pages(
         russian_cities_pages, russian_city_limit
     )
+    save_to_json(russian_cities_data, "russian_cities_data.json")
     big_cities_data = wikipedia_parser.scrape_pages(big_cities_pages, big_city_limit)
+    save_to_json(big_cities_data, "big_cities_data.json")
+
     tourism_data = wikipedia_parser.scrape_pages(tourism_pages, tourism_limit)
+    save_to_json(tourism_data, "tourism_data.json")
 
     wikivoyage_russian_cities_data = wikivoyage_parser.scrape_pages(
         russian_cities_pages, russian_city_limit
     )
+    save_to_json(wikivoyage_russian_cities_data, "wikivoyage_russian_cities_data.json")
+
     wikivoyage_big_cities_data = wikivoyage_parser.scrape_pages(
         big_cities_pages, big_city_limit
     )
+    save_to_json(wikivoyage_big_cities_data, "wikivoyage_big_cities_data.json")
 
-    return (
-        russian_cities_data,
-        big_cities_data,
-        tourism_data,
-        wikivoyage_russian_cities_data,
-        wikivoyage_big_cities_data,
+
+def get_wikivoyage_data(
+    big_city_limit=None, russian_city_limit=None
+):
+    wikipedia_parser = WikiParser()
+    wikivoyage_parser = WikiParser(base_url="https://ru.wikivoyage.org")
+
+    russian_cities_pages = wikipedia_parser.get_pages_from_table(
+        "Список городов России", "Город"
+    )
+    big_cities_pages = wikipedia_parser.get_pages_from_table(
+        "Список городов с населением более миллиона человек", "Город"
     )
 
-
-def save_to_json(data, filename):
-    """Save collected data to JSON"""
-    with open(filename, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"Data saved to {filename}")
-
-
-def main(big_city_limit=None, russian_city_limit=None, tourism_limit=None):
-    (
-        russian_cities_data,
-        big_cities_data,
-        tourism_data,
-        wikivoyage_russian_cities_data,
-        wikivoyage_big_cities_data,
-    ) = get_data(big_city_limit, russian_city_limit, tourism_limit)
-    save_to_json(russian_cities_data, "russian_cities_data.json")
-    save_to_json(big_cities_data, "big_cities_data.json")
-    save_to_json(tourism_data, "tourism_data.json")
+    wikivoyage_russian_cities_data = wikivoyage_parser.scrape_pages(
+        russian_cities_pages, russian_city_limit
+    )
     save_to_json(wikivoyage_russian_cities_data, "wikivoyage_russian_cities_data.json")
+    wikivoyage_big_cities_data = wikivoyage_parser.scrape_pages(
+        big_cities_pages, big_city_limit
+    )
     save_to_json(wikivoyage_big_cities_data, "wikivoyage_big_cities_data.json")
 
 
 if __name__ == "__main__":
-    main(big_city_limit=None, russian_city_limit=None, tourism_limit=None)
+    get_whole_data(big_city_limit=None, russian_city_limit=None, tourism_limit=None)
+    # get_wikivoyage_data(big_city_limit=None, russian_city_limit=None)
