@@ -1,7 +1,8 @@
+import json
+import re
+
 import requests
 from bs4 import BeautifulSoup
-import re
-import json
 from tqdm import tqdm
 import wikipediaapi
 
@@ -219,7 +220,6 @@ class WikiParser:
                                                 break
 
                         current = current.find_next_sibling()
-
                     # Combine content if there's any
                     section_content = {
                         k: " ".join(v) for k, v in section_content.items()
@@ -274,7 +274,6 @@ def get_whole_data(big_city_limit=None, russian_city_limit=None, tourism_limit=N
         russian_cities_pages, russian_city_limit
     )
     save_to_json(russian_cities_data, "russian_cities_data.json")
-
     big_cities_data = wikipedia_parser.scrape_pages(big_cities_pages, big_city_limit)
     save_to_json(big_cities_data, "big_cities_data.json")
 
