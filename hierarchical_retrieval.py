@@ -98,8 +98,8 @@ class HierarchicalRetrieval:
         if save:
             self.save_vectorstores(title_vectorstore=title_vectorstore,
                                    chunk_vectorstore=chunk_vectorstore,
-                                   title_index_path=title_index_path, 
-                                   chunk_index_path=chunk_index_path)
+                                   title_index_path=self.title_index_path, 
+                                   chunk_index_path=self.chunk_index_path)
         return title_vectorstore, chunk_vectorstore
             
     
