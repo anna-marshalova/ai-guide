@@ -12,7 +12,14 @@ def print_retrieved_items(results, prefix, crop_length=30):
             return text[:crop_length] + "..."
         else:
             return text
-    print(f"{prefix}: " + ", ".join([f"{crop_text(item.page_content)}: {score:.2f}" for item, score in results]))
+
+    print(
+        f"{prefix}: "
+        + ", ".join(
+            [f"{crop_text(item.page_content)}: {score:.2f}" for item, score in results]
+        )
+    )
+
 
 class HierarchicalRetrieval:
     def __init__(self, data: Dict[str, List[str]]=None, 
@@ -46,10 +53,10 @@ class HierarchicalRetrieval:
         # Initialize embeddings
         self.embeddings = HuggingFaceEmbeddings(
             model_name=embedding_model,
-            model_kwargs={'device': device},
-            encode_kwargs={'normalize_embeddings': True}
+            model_kwargs={"device": device},
+            encode_kwargs={"normalize_embeddings": True},
         )
-        
+
         # Prepare title and chunk vector stores
         self.title_vectorstore, self.chunk_vectorstore = self.prepare_vector_stores()
 
@@ -99,46 +106,45 @@ class HierarchicalRetrieval:
     def retrieve(self, query: str, verbose: bool = False) -> List[str]:
         """
         Retrieve relevant chunks based on query
-        
+
         1. First, find top N relevant titles
         2. Then, find M relevant chunks under each title
         3. Rank and return K total chunks
         """
         # Step 1: Retrieve top N titles
         title_results = self.title_vectorstore.similarity_search_with_score(
-            query, 
-            k=self.title_top_n
+            query, k=self.title_top_n
         )
-        
+
         # Collect relevant titles
         if verbose:
             print_retrieved_items(title_results, "Relevant titles", crop_length=None)
         relevant_titles = [result.page_content for result, _ in title_results]
-        
+
         # Step 2: Retrieve chunks for each title
         all_relevant_chunks = []
         for title in relevant_titles:
             # Filter chunks by title metadata
             title_chunks = self.chunk_vectorstore.similarity_search_with_score(
-                query, 
-                k=self.chunks_per_title,
-                filter={"title": title}
+                query, k=self.chunks_per_title, filter={"title": title}
             )
             all_relevant_chunks.extend(title_chunks)
-        
+
         if verbose:
-            print_retrieved_items(all_relevant_chunks, "All relevant chunks", crop_length=30)
-        
-        
+            print_retrieved_items(
+                all_relevant_chunks, "All relevant chunks", crop_length=30
+            )
+
         # Step 3: Rank and return top K chunks
-        final_chunks = sorted(
-            all_relevant_chunks, 
-            key=lambda x: x[1]
-        )[:self.total_chunks]
-        final_chunks = [chunk for chunk in final_chunks if chunk[1] <= self.max_distance]
+        final_chunks = sorted(all_relevant_chunks, key=lambda x: x[1])[
+            : self.total_chunks
+        ]
+        final_chunks = [
+            chunk for chunk in final_chunks if chunk[1] <= self.max_distance
+        ]
         if verbose:
             print_retrieved_items(final_chunks, "Final chunks", crop_length=30)
-        
+
         return [chunk[0].page_content for chunk in final_chunks]
     
     def save_vectorstores(self, title_vectorstore=None, chunk_vectorstore=None, title_index_path=None, chunk_index_path=None):
@@ -153,6 +159,7 @@ class HierarchicalRetrieval:
             assert vectorstore, f"{name} vector store not found. Please call `prepare_vector_stores` method."
             vectorstore.save_local(path)
             print(f"{name} saved to {path}.")
+
 
 # Example usage
 def main():
@@ -169,14 +176,14 @@ def main():
     #         "Reinforcement learning learns through interaction"
     #     ]
     # }
-    
+
     # Initialize RAG system
     paths = os.listdir("data")
     data = []
     for path in paths:
         with open(f"data/{path}") as f:
             data.append(json.load(f))
-            
+
     flat_data = flatten_data(data)
     chunked_data = make_chunks(flat_data)
     assert all(len(chunk)<2000 for chunks in chunked_data.values() for chunk in chunks)
@@ -188,10 +195,11 @@ def main():
     # Example query
     query = "Что посмотреть в Шанхае"
     results = rag_system.retrieve(query)
-    
+
     print("Retrieved Chunks:")
     for chunk in results:
         print("- " + chunk)
+
 
 if __name__ == "__main__":
     main()
