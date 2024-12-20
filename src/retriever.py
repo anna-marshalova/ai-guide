@@ -1,9 +1,9 @@
 import os
-import json
 from typing import Dict, List
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
-from data_processing import make_chunks, flatten_data
+from src.data.data_processing import load_and_preprocess_data
+
 
 def print_retrieved_items(results, prefix, crop_length=30):
     def crop_text(text):
@@ -21,16 +21,19 @@ def print_retrieved_items(results, prefix, crop_length=30):
     )
 
 
-class HierarchicalRetrieval:
-    def __init__(self, data: Dict[str, List[str]]=None, 
-                 embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-                 device: str = "cpu",
-                 title_top_n: int = 10, 
-                 chunks_per_title: int = 2, 
-                 total_chunks: int = 5,
-                 max_distance: float = 1,
-                 title_index_path="vectorstores/title_index",
-                 chunk_index_path="vectorstores/chunk_index"):
+class HierarchicalRetriever:
+    def __init__(
+        self,
+        data: Dict[str, List[str]] = None,
+        embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        device: str = "cpu",
+        title_top_n: int = 10,
+        chunks_per_title: int = 2,
+        total_chunks: int = 5,
+        max_distance: float = 1,
+        title_index_path="vectorstores/title_index",
+        chunk_index_path="vectorstores/chunk_index",
+    ):
         """
         :param data: Dictionary with titles as keys and text chunks as values
         :param title_top_n: Number of top titles to retrieve
@@ -46,10 +49,9 @@ class HierarchicalRetrieval:
         self.device = device
         self.title_vectorstore = None
         self.chunk_vectorstore = None
-        self.title_index_path=title_index_path
-        self.chunk_index_path=chunk_index_path
+        self.title_index_path = title_index_path
+        self.chunk_index_path = chunk_index_path
 
-        
         # Initialize embeddings
         self.embeddings = HuggingFaceEmbeddings(
             model_name=embedding_model,
@@ -62,26 +64,37 @@ class HierarchicalRetrieval:
 
     def prepare_vector_stores(self, force_recreate=False, save=True):
         """Prepare vector stores for titles and chunks"""
-        
+
         if not force_recreate:
             if not os.path.exists(self.title_index_path):
-                print(f"Title vectorstore not found at {self.title_index_path}. Start indexing.")
+                print(
+                    f"Title vectorstore not found at {self.title_index_path}. Start indexing."
+                )
             elif not os.path.exists(self.chunk_index_path):
-                print(f"Chunk vectorstore not found at {self.title_index_path}. Start indexing.")
+                print(
+                    f"Chunk vectorstore not found at {self.title_index_path}. Start indexing."
+                )
             else:
                 print("Loading existing vectorstores...")
-                title_vectorstore = FAISS.load_local(self.title_index_path, self.embeddings, allow_dangerous_deserialization=True)
-                chunk_vectorstore = FAISS.load_local(self.chunk_index_path, self.embeddings, allow_dangerous_deserialization=True)
+                title_vectorstore = FAISS.load_local(
+                    self.title_index_path,
+                    self.embeddings,
+                    allow_dangerous_deserialization=True,
+                )
+                chunk_vectorstore = FAISS.load_local(
+                    self.chunk_index_path,
+                    self.embeddings,
+                    allow_dangerous_deserialization=True,
+                )
                 return title_vectorstore, chunk_vectorstore
         else:
             print("Start indexing.")
-                
-        assert self.data is not None, "Data not provded. Please provide data (Dict[str, List[str]])."
+
+        assert (
+            self.data is not None
+        ), "Data not provded. Please provide data (Dict[str, List[str]])."
         title_texts = list(self.data.keys())
-        title_vectorstore = FAISS.from_texts(
-            title_texts, 
-            self.embeddings
-        )
+        title_vectorstore = FAISS.from_texts(title_texts, self.embeddings)
         # Chunks vector store
         all_chunks = []
         chunk_metadata = []
@@ -89,20 +102,19 @@ class HierarchicalRetrieval:
             for chunk in chunks:
                 all_chunks.append(chunk)
                 chunk_metadata.append({"title": title})
-        
+
         chunk_vectorstore = FAISS.from_texts(
-            all_chunks, 
-            self.embeddings, 
-            metadatas=chunk_metadata
+            all_chunks, self.embeddings, metadatas=chunk_metadata
         )
         if save:
-            self.save_vectorstores(title_vectorstore=title_vectorstore,
-                                   chunk_vectorstore=chunk_vectorstore,
-                                   title_index_path=self.title_index_path, 
-                                   chunk_index_path=self.chunk_index_path)
+            self.save_vectorstores(
+                title_vectorstore=title_vectorstore,
+                chunk_vectorstore=chunk_vectorstore,
+                title_index_path=self.title_index_path,
+                chunk_index_path=self.chunk_index_path,
+            )
         return title_vectorstore, chunk_vectorstore
-            
-    
+
     def retrieve(self, query: str, verbose: bool = False) -> List[str]:
         """
         Retrieve relevant chunks based on query
@@ -146,17 +158,27 @@ class HierarchicalRetrieval:
             print_retrieved_items(final_chunks, "Final chunks", crop_length=30)
 
         return [chunk[0].page_content for chunk in final_chunks]
-    
-    def save_vectorstores(self, title_vectorstore=None, chunk_vectorstore=None, title_index_path=None, chunk_index_path=None):
+
+    def save_vectorstores(
+        self,
+        title_vectorstore=None,
+        chunk_vectorstore=None,
+        title_index_path=None,
+        chunk_index_path=None,
+    ):
         title_vectorstore = title_vectorstore or self.title_vectorstore
         chunk_vectorstore = chunk_vectorstore or self.chunk_vectorstore
         title_index_path = title_index_path or self.title_index_path
         chunk_index_path = chunk_index_path or self.chunk_index_path
-        
-        for name, path, vectorstore in [('Title', title_index_path, title_vectorstore),
-                                        ('Chunk', chunk_index_path, chunk_vectorstore)]:
+
+        for name, path, vectorstore in [
+            ("Title", title_index_path, title_vectorstore),
+            ("Chunk", chunk_index_path, chunk_vectorstore),
+        ]:
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            assert vectorstore, f"{name} vector store not found. Please call `prepare_vector_stores` method."
+            assert (
+                vectorstore
+            ), f"{name} vector store not found. Please call `prepare_vector_stores` method."
             vectorstore.save_local(path)
             print(f"{name} saved to {path}.")
 
@@ -178,20 +200,12 @@ def main():
     # }
 
     # Initialize RAG system
-    paths = os.listdir("data")
-    data = []
-    for path in paths:
-        with open(f"data/{path}") as f:
-            data.append(json.load(f))
+    chunked_data = load_and_preprocess_data(datadir="./data")
 
-    flat_data = flatten_data(data)
-    chunked_data = make_chunks(flat_data)
-    assert all(len(chunk)<2000 for chunks in chunked_data.values() for chunk in chunks)
-    
-    #chunked_data = dict(list(chunked_data.items())[:10])
+    # chunked_data = dict(list(chunked_data.items())[:10])
     print(len(chunked_data))
 
-    rag_system = HierarchicalRetrieval(chunked_data)
+    rag_system = HierarchicalRetriever(chunked_data)
     # Example query
     query = "Что посмотреть в Шанхае"
     results = rag_system.retrieve(query)
