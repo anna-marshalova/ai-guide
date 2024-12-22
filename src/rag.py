@@ -1,8 +1,10 @@
 import os
+import sys
 
 from dotenv import load_dotenv
 
 from langchain_community.chat_models import GigaChat
+sys.path.append("./")
 
 from src.data.data_processing import load_and_preprocess_data
 
