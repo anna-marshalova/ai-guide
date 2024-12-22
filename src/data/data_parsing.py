@@ -291,9 +291,7 @@ def get_whole_data(big_city_limit=None, russian_city_limit=None, tourism_limit=N
     save_to_json(wikivoyage_big_cities_data, "wikivoyage_big_cities_data.json")
 
 
-def get_wikivoyage_data(
-    big_city_limit=None, russian_city_limit=None
-):
+def get_wikivoyage_data(big_city_limit=None, russian_city_limit=None):
     wikipedia_parser = WikiParser()
     wikivoyage_parser = WikiParser(base_url="https://ru.wikivoyage.org")
 
