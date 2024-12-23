@@ -1,11 +1,11 @@
 import os
 import sys
 
-from dotenv import load_dotenv
-from langchain_community.chat_models import GigaChat
-
 sys.path.append("./")
 
+from dotenv import load_dotenv
+
+from langchain_community.chat_models import GigaChat
 from langchain.chains import ConversationChain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
