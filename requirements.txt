@@ -4,10 +4,11 @@ beautifulsoup4
 faiss-cpu
 flake8==6.1.0
 gigachat==0.1.36
+gradio==5.9.1
 python-dotenv
 langchain==0.3.12
 langchain-community==0.3.12
 langchain-core==0.3.25
-langchain_huggingface==0.1.2
+langchain-huggingface==0.1.2
 sentence-transformers==3.3.1
-wikipediaapi
+wikipedia-api
