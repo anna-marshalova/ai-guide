@@ -11,6 +11,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
 from src.data.data_processing import load_and_preprocess_data
+
 from src.retriever import HierarchicalRetriever
 
 load_dotenv()
@@ -47,7 +48,6 @@ class RAG:
             6. Если в контексте недостаточно информации по какому-то аспекту вопроса - используй свои знания, но укажи это.
 
             Стремись дать максимально полезный, информативный и практичный ответ, комбинируя все доступные знания.
-            
             Ответ:"""
         self.general_prompt_template = """
             Ты - опытный туристический гид с обширными знаниями о путешествиях, культуре и истории разных мест.
@@ -59,15 +59,6 @@ class RAG:
             Ответ:"""
 
         self.chain = ConversationChain(llm=self.llm)
-
-        # self.rag_chain = (
-        #     {
-        #         "context": RunnablePassthrough(),
-        #         "question": RunnablePassthrough(),
-        #     }
-        #     | self.prompt_template
-        #     | self.llm
-        # )
 
     def retrieve(self, query):
         return self.retriever.retrieve(query)
