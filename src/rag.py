@@ -2,15 +2,15 @@ import os
 import sys
 
 from dotenv import load_dotenv
-
 from langchain_community.chat_models import GigaChat
+
 sys.path.append("./")
 
-from src.data.data_processing import load_and_preprocess_data
-
+from langchain.chains import ConversationChain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
+from src.data.data_processing import load_and_preprocess_data
 from src.retriever import HierarchicalRetriever
 
 load_dotenv()
@@ -28,8 +28,7 @@ class RAG:
             verify_ssl_certs=False,
             profanity_check=False,
         )
-        self.prompt_template = ChatPromptTemplate.from_template(
-            """
+        self.rag_prompt_template = """
             Ты - опытный туристический гид с обширными знаниями о путешествиях, культуре и истории разных мест.
             Контекст из надежного источника: {context}
 
@@ -49,30 +48,44 @@ class RAG:
 
             Стремись дать максимально полезный, информативный и практичный ответ, комбинируя все доступные знания.
             
-            Если вопрос пользователя не предполагает поиска, например пользователь написал просто "Привет!", можешь не опираться на информацию в контексте.
-
             Ответ:"""
-        )
-        self.rag_chain = (
-            {
-                "context": RunnablePassthrough(),
-                "question": RunnablePassthrough(),
-            }
-            | self.prompt_template
-            | self.llm
-        )
+        self.general_prompt_template = """
+            Ты - опытный туристический гид с обширными знаниями о путешествиях, культуре и истории разных мест.
+
+            Вопрос пользователя: {question}
+            
+            Стремись дать максимально полезный, информативный и практичный ответ, комбинируя все доступные знания.
+            
+            Ответ:"""
+
+        self.chain = ConversationChain(llm=self.llm)
+
+        # self.rag_chain = (
+        #     {
+        #         "context": RunnablePassthrough(),
+        #         "question": RunnablePassthrough(),
+        #     }
+        #     | self.prompt_template
+        #     | self.llm
+        # )
 
     def retrieve(self, query):
         return self.retriever.retrieve(query)
 
     def run(self, query):
         context = self.retrieve(query)
-        result = self.rag_chain.invoke({"question": query, "context": context})
-        return {"response": result.content, "retrieved_chunks": context}
+        # result = self.rag_chain.invoke({"question": query, "context": context}).content
+        if len(context) > 0:
+            prompt = self.rag_prompt_template.format(question=query, context=context)
+        else:
+            prompt = self.general_prompt_template.format(question=query)
+        result = self.chain.predict(input=prompt)
+        return {"response": result, "retrieved_chunks": context}
 
 
 if __name__ == "__main__":
     chunked_data = load_and_preprocess_data(datadir="./data")
 
     rag = RAG(chunked_data)
-    print(rag.run("Что посмотреть в Шанхае?"))
+    print(rag.run("привет"))
+    # print(rag.run("Что посмотреть в Шанхае?"))
