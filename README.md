@@ -10,7 +10,7 @@
    pip install -r requirements.txt
    ```
 
-2. Если запускаете приложение впервые, то скачайте данные для RAG из папки и положите в [папку](https://drive.google.com/drive/folders/1vZmVLdmalDOYs8N7aTzUBaJ6sprVpo5f?usp=sharing) data в корне репозитория. При запуске данные будут проиндексированы и записаны в vectorstore.
+2. Если запускаете приложение впервые, то скачайте данные для RAG из [папки](https://drive.google.com/drive/folders/1vZmVLdmalDOYs8N7aTzUBaJ6sprVpo5f?usp=sharing) и положите в папку data в корне репозитория. При запуске данные будут проиндексированы и записаны в vectorstore.
 
 3. Приложение использует LLM GigaChat по API, поэтому для коррректной работы необходимо добавить ключ API_KEY в файл .env
 
