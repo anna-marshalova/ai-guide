@@ -1,7 +1,10 @@
 venv
+.venv
 vectorstores/
 data/
 .env
 __pycache__/
 .gradio/
 .DS_Store
+.ipynb_checkpoints
+*.ipynb
