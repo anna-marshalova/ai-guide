@@ -1,0 +1,7 @@
+venv
+vectorstores/
+data/
+.env
+__pycache__/
+.gradio/
+.DS_Store
