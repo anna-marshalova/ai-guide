@@ -6,7 +6,7 @@ sys.path.append("./")
 from dotenv import load_dotenv
 
 from langchain_community.chat_models import GigaChat
-from langchain.chains import ConversationChain
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
@@ -29,11 +29,8 @@ class RAG:
             verify_ssl_certs=False,
             profanity_check=False,
         )
-        self.rag_prompt_template = """
+        self.rag_system_prompt = """
             Ты - опытный туристический гид с обширными знаниями о путешествиях, культуре и истории разных мест.
-            Контекст из надежного источника: {context}
-
-            Вопрос пользователя: {question}
 
             При ответе:
             1. В первую очередь используй факты из предоставленного контекста - это самая актуальная и проверенная информация
@@ -51,26 +48,32 @@ class RAG:
             Ответ:"""
         self.general_prompt_template = """
             Ты - опытный туристический гид с обширными знаниями о путешествиях, культуре и истории разных мест.
-
-            Вопрос пользователя: {question}
-            
             Стремись дать максимально полезный, информативный и практичный ответ, комбинируя все доступные знания.
-            
-            Ответ:"""
-
-        self.chain = ConversationChain(llm=self.llm)
+            """
 
     def retrieve(self, query):
         return self.retriever.retrieve(query)
+    
+    def create_prompt(self, query, context):
+        if len(context) > 0:
+            return [
+                SystemMessage(content=self.rag_system_prompt),
+                HumanMessage(self.rag_user_prompt.format(question=query, context=context))
+                ]
+        return [
+                SystemMessage(content=self.general_system_prompt),
+                HumanMessage(query)
+                ]
 
     def run(self, query):
         context = self.retrieve(query)
-        # result = self.rag_chain.invoke({"question": query, "context": context}).content
-        if len(context) > 0:
-            prompt = self.rag_prompt_template.format(question=query, context=context)
-        else:
-            prompt = self.general_prompt_template.format(question=query)
-        result = self.chain.predict(input=prompt)
+        prompt = self.create_prompt(query, context)
+ 
+        response = self.llm.invoke(prompt)
+        if response.response_metadata['finish_reason'] == 'blacklist':
+            prompt = self.create_prompt(query, [])
+            response = self.llm.invoke(prompt)
+        result = response.content
         return {"response": result, "retrieved_chunks": context}
 
 
@@ -78,5 +81,5 @@ if __name__ == "__main__":
     chunked_data = load_and_preprocess_data(datadir="./data")
 
     rag = RAG(chunked_data)
-    print(rag.run("привет"))
+    print(rag.run("Что посмотреть в Москве?"))
     # print(rag.run("Что посмотреть в Шанхае?"))
