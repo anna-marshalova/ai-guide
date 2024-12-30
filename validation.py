@@ -15,7 +15,7 @@ load_dotenv()
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
-file = open("data/validation_data.json")
+file = open("validation_data/validation_data.json")
 eval_data = json.load(file)
 eval_hf_dataset = Dataset.from_dict(eval_data)
 eval_dataset = EvaluationDataset.from_hf_dataset(eval_hf_dataset)
@@ -44,4 +44,4 @@ results = evaluate(
 print(results)
 
 results_df = results.to_pandas()
-results_df.to_csv("data/validation_results.csv", index=False)
+results_df.to_csv("validation_data/validation_results.csv", index=False)

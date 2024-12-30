@@ -2,6 +2,7 @@ venv
 .venv
 vectorstores/
 data/
+validation_data/
 .env
 __pycache__/
 .gradio/
