@@ -46,36 +46,40 @@ class RAG:
             6. Если в контексте недостаточно информации по какому-то аспекту вопроса - используй свои знания, но укажи это.
 
             Стремись дать максимально полезный, информативный и практичный ответ, комбинируя все доступные знания.
-            Ответ:"""
-        
+            Ответ:
+        """
+
         self.general_system_prompt = """
             Ты - опытный туристический гид с обширными знаниями о путешествиях, культуре и истории разных мест.
             Стремись дать максимально полезный, информативный и практичный ответ, комбинируя все доступные знания.
-            """
-        self.rag_user_prompt_template = """Контекст из надежного источника: {context}
+        """
 
-Вопрос пользователя: {question}"""
-        
+        self.rag_user_prompt_template = """
+            Контекст из надежного источника: {context}
+            Вопрос пользователя: {question}
+        """
+
     def retrieve(self, query):
         return self.retriever.retrieve(query)
-    
+
     def create_prompt(self, query, context):
         if len(context) > 0:
             return [
                 SystemMessage(content=self.rag_system_prompt),
-                HumanMessage(self.rag_user_prompt_template.format(question=query, context=context))
-                ]
-        return [
-                SystemMessage(content=self.general_system_prompt),
-                HumanMessage(query)
-                ]
+                HumanMessage(
+                    self.rag_user_prompt_template.format(
+                        question=query, context=context
+                    )
+                ),
+            ]
+        return [SystemMessage(content=self.general_system_prompt), HumanMessage(query)]
 
     def run(self, query):
         context = self.retrieve(query)
         prompt = self.create_prompt(query, context)
- 
+
         response = self.llm.invoke(prompt)
-        if response.response_metadata['finish_reason'] == 'blacklist':
+        if response.response_metadata["finish_reason"] == "blacklist":
             prompt = self.create_prompt(query, [])
             response = self.llm.invoke(prompt)
         result = response.content
