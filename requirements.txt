@@ -1,6 +1,7 @@
 pre-commit==3.6.0
 black==23.12.1
 beautifulsoup4
+datasets
 faiss-cpu
 flake8==6.1.0
 gigachat==0.1.36
@@ -10,5 +11,8 @@ langchain==0.3.12
 langchain-community==0.3.12
 langchain-core==0.3.25
 langchain-huggingface==0.1.2
+langchain-openai
+ragas
+rapidfuzz
 sentence-transformers==3.3.1
 wikipedia-api
