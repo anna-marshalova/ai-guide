@@ -57,7 +57,7 @@
 
 Часть вопросов в итоге была удалены из-за "Giga generation stopped with reason: blacklist"
 
-Результат - [validation_data.json](https://drive.google.com/file/d/1suoyveha2bU3QqWdSGKeVMl6pP7M7kXy/view?usp=sharing)
+Результат - [`validation_data.json`](https://drive.google.com/file/d/1suoyveha2bU3QqWdSGKeVMl6pP7M7kXy/view?usp=sharing)
 
 ### Оценка
 
