@@ -50,6 +50,10 @@ class RAG:
             Ты - опытный туристический гид с обширными знаниями о путешествиях, культуре и истории разных мест.
             Стремись дать максимально полезный, информативный и практичный ответ, комбинируя все доступные знания.
             """
+        self.rag_user_prompt_template = """Контекст из надежного источника: {context}
+
+Вопрос пользователя: {question}"""
+
 
     def retrieve(self, query):
         return self.retriever.retrieve(query)
@@ -58,7 +62,7 @@ class RAG:
         if len(context) > 0:
             return [
                 SystemMessage(content=self.rag_system_prompt),
-                HumanMessage(self.rag_user_prompt.format(question=query, context=context))
+                HumanMessage(self.rag_user_prompt_template.format(question=query, context=context))
                 ]
         return [
                 SystemMessage(content=self.general_system_prompt),
