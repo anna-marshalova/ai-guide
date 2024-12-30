@@ -44,4 +44,4 @@ results = evaluate(
 print(results)
 
 results_df = results.to_pandas()
-results_df.to_csv("validation_data/validation_results.csv", index=False)
+results_df.to_csv("../validation_data/validation_results.csv", index=False)
